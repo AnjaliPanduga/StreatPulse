@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { getSupabase } from '../utils/supabase';
+import { getDbPool } from '../utils/db';
 import { aggregateByCell } from './collectiveIntelligence';
 
 export interface RiskResult {
@@ -52,7 +52,7 @@ export async function computeRiskForCells(h3Indices: string[]): Promise<RiskResu
       (agg.dangerTaps * WEIGHTS.dangerTap) +
       (timeMultiplier * WEIGHTS.timeFactor * 10);
 
-    // FIX: Ensure a single danger tap pushes score up to at least Caution level (approx 40% after normalization)
+    // Ensure a single danger tap pushes score up to at least Caution level
     if (agg.dangerTaps >= 1 && rawScore < 20) {
       rawScore = 20;
     }
@@ -83,37 +83,45 @@ export async function computeRiskForCells(h3Indices: string[]): Promise<RiskResu
 export async function persistRiskResults(results: RiskResult[]): Promise<void> {
   if (results.length === 0) return;
 
-  const supabase = getSupabase();
+  const pool = getDbPool();
 
-  const rows = results.map(r => ({
-    h3_index: r.h3Index,
-    risk_score: r.riskScore,
-    risk_level: r.riskLevel,
-    slowdown_count: r.slowdownCount,
-    reroute_count: r.rerouteCount,
-    hesitation_count: r.hesitationCount,
-    stop_cluster_count: r.stopClusterCount,
-    danger_tap_count: r.dangerTapCount,
-    unique_users: r.uniqueUsers,
-    center_lat: r.centerLat,
-    center_lng: r.centerLng,
-    updated_at: new Date().toISOString(),
-  }));
+  const upserts = results.map(async r => {
+    return pool.query(
+      `INSERT INTO geo_cells (h3_index, risk_score, risk_level, slowdown_count, reroute_count, hesitation_count, stop_cluster_count, danger_tap_count, unique_users, center_lat, center_lng, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       ON CONFLICT (h3_index) DO UPDATE SET
+         risk_score = EXCLUDED.risk_score,
+         risk_level = EXCLUDED.risk_level,
+         slowdown_count = EXCLUDED.slowdown_count,
+         reroute_count = EXCLUDED.reroute_count,
+         hesitation_count = EXCLUDED.hesitation_count,
+         stop_cluster_count = EXCLUDED.stop_cluster_count,
+         danger_tap_count = EXCLUDED.danger_tap_count,
+         unique_users = EXCLUDED.unique_users,
+         center_lat = EXCLUDED.center_lat,
+         center_lng = EXCLUDED.center_lng,
+         updated_at = EXCLUDED.updated_at`,
+      [r.h3Index, r.riskScore, r.riskLevel, r.slowdownCount, r.rerouteCount, r.hesitationCount, r.stopClusterCount, r.dangerTapCount, r.uniqueUsers, r.centerLat, r.centerLng, new Date().toISOString()]
+    );
+  });
 
-  await supabase.from('geo_cells').upsert(rows, { onConflict: 'h3_index' });
+  try {
+    await Promise.all(upserts);
+  } catch (err) {
+    console.error('[RiskScorer] Upsert failed:', err);
+  }
 }
 
 export async function getAllActiveRisks(): Promise<RiskResult[]> {
-  const supabase = getSupabase();
+  const pool = getDbPool();
   const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
-  const { data } = await supabase
-    .from('geo_cells')
-    .select('*')
-    .gte('updated_at', cutoff)
-    .order('risk_score', { ascending: false });
+  const { rows } = await pool.query(
+    'SELECT * FROM geo_cells WHERE updated_at >= $1 ORDER BY risk_score DESC',
+    [cutoff]
+  );
 
-  return (data || []).map((r: any) => ({
+  return (rows || []).map((r: any) => ({
     h3Index: r.h3_index,
     riskScore: r.risk_score,
     riskLevel: r.risk_level,

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import * as h3 from 'h3-js';
-import { getSupabase } from '../utils/supabase';
+import { getDbPool } from '../utils/db';
 import { anonymizeId, sanitizeSignalPayload } from '../utils/privacy';
 import { detectAnomalies, persistAnomalies, SignalPoint } from '../engine/anomalyDetector';
 import { computeRiskForCells, persistRiskResults } from '../engine/riskScorer';
@@ -20,21 +20,23 @@ router.post('/', signalLimiter, async (req: Request, res: Response): Promise<voi
     const { points, sessionId } = req.body;
     const anonId = anonymizeId(sessionId);
 
-    const supabase = getSupabase();
+    const pool = getDbPool();
 
-    const signalRows = points.map((p: SignalPoint) => ({
-      anon_id: anonId,
-      lat: p.lat,
-      lng: p.lng,
-      speed: p.speed,
-      heading: p.heading,
-      h3_index: h3.latLngToCell(p.lat, p.lng, H3_RESOLUTION),
-      location: `POINT(${p.lng} ${p.lat})`,
-    }));
-
-    const { error: signalError } = await supabase.from('raw_signals').insert(signalRows);
-    if (signalError) {
-      console.error('[Signal] Insert failed:', signalError);
+    if (points.length > 0) {
+      const insertQueries = points.map(async (p: SignalPoint) => {
+        const idx = h3.latLngToCell(p.lat, p.lng, H3_RESOLUTION);
+        return pool.query(
+          `INSERT INTO raw_signals (anon_id, lat, lng, speed, heading, h3_index, location)
+           VALUES ($1, $2, $3, $4, $5, $6, ST_SetSRID(ST_MakePoint($3, $2), 4326))`,
+          [anonId, p.lat, p.lng, p.speed, p.heading, idx]
+        );
+      });
+      
+      try {
+        await Promise.all(insertQueries);
+      } catch (signalError) {
+        console.error('[Signal] Insert failed:', signalError);
+      }
     }
 
     const anomalies = detectAnomalies(points);

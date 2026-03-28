@@ -1,4 +1,4 @@
-import { getSupabase } from '../utils/supabase';
+import { getDbPool } from '../utils/db';
 import { getTrustScores, recordCorroborationEvent } from './trustEngine';
 
 interface AnomalyCounts {
@@ -22,22 +22,21 @@ const MULTI_USER_BOOST = 1.5;
 const CONCURRENT_WINDOW_MS = 5 * 60 * 1000;
 
 export async function aggregateByCell(h3Indices: string[]): Promise<Map<string, CellAggregation>> {
-  const supabase = getSupabase();
-  const cutoff = new Date(Date.now() - TIME_WINDOW_MS).toISOString();
+  if (h3Indices.length === 0) return new Map();
 
+  const pool = getDbPool();
+  const cutoff = new Date(Date.now() - TIME_WINDOW_MS).toISOString();
   const results = new Map<string, CellAggregation>();
 
-  const { data: anomalies } = await supabase
-    .from('anomalies')
-    .select('h3_index, anomaly_type, anon_id, severity, created_at')
-    .in('h3_index', h3Indices)
-    .gte('created_at', cutoff);
+  const { rows: anomalies } = (await pool.query(
+    'SELECT h3_index, anomaly_type, anon_id, severity, created_at FROM anomalies WHERE h3_index = ANY($1) AND created_at >= $2',
+    [h3Indices, cutoff]
+  )) as { rows: any[] };
 
-  const { data: taps } = await supabase
-    .from('danger_taps')
-    .select('h3_index, anon_id, created_at')
-    .in('h3_index', h3Indices)
-    .gte('created_at', cutoff);
+  const { rows: taps } = (await pool.query(
+    'SELECT h3_index, anon_id, created_at FROM danger_taps WHERE h3_index = ANY($1) AND created_at >= $2',
+    [h3Indices, cutoff]
+  )) as { rows: any[] };
 
   for (const idx of h3Indices) {
     const cellAnomalies = (anomalies || []).filter(a => a.h3_index === idx);
@@ -99,18 +98,16 @@ export async function aggregateByCell(h3Indices: string[]): Promise<Map<string, 
 }
 
 export async function getActiveH3Cells(): Promise<string[]> {
-  const supabase = getSupabase();
+  const pool = getDbPool();
   const cutoff = new Date(Date.now() - TIME_WINDOW_MS).toISOString();
 
-  const { data: anomalyCells } = await supabase
-    .from('anomalies')
-    .select('h3_index')
-    .gte('created_at', cutoff);
+  const { rows: anomalyCells } = (await pool.query(
+    'SELECT h3_index FROM anomalies WHERE created_at >= $1', [cutoff]
+  )) as { rows: any[] };
 
-  const { data: tapCells } = await supabase
-    .from('danger_taps')
-    .select('h3_index')
-    .gte('created_at', cutoff);
+  const { rows: tapCells } = (await pool.query(
+    'SELECT h3_index FROM danger_taps WHERE created_at >= $1', [cutoff]
+  )) as { rows: any[] };
 
   const allCells = new Set<string>();
   (anomalyCells || []).forEach(r => allCells.add(r.h3_index));

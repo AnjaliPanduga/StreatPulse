@@ -1,0 +1,20 @@
+﻿src/engine/collectiveIntelligence.ts(43,52): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(44,42): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(46,58): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(47,49): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(51,40): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(52,37): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(53,40): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(54,42): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(58,46): error TS2345: Argument of type 'unknown[]' is not assignable to parameter of type 'string[]'.
+  Type 'unknown' is not assignable to type 'string'.
+src/engine/collectiveIntelligence.ts(62,66): error TS18046: 'sum' is of type 'unknown'.
+src/engine/collectiveIntelligence.ts(62,89): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/engine/collectiveIntelligence.ts(63,23): error TS18046: 'totalTrust' is of type 'unknown'.
+src/engine/collectiveIntelligence.ts(69,30): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(70,25): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(82,34): error TS2345: Argument of type 'unknown[]' is not assignable to parameter of type 'string[]'.
+  Type 'unknown' is not assignable to type 'string'.
+src/engine/collectiveIntelligence.ts(116,32): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(117,28): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/engine/trustEngine.ts(42,33): error TS7006: Parameter 'r' implicitly has an 'any' type.

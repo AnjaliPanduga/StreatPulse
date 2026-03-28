@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import * as h3 from 'h3-js';
-import { getSupabase } from '../utils/supabase';
+import { getDbPool } from '../utils/db';
 import { anonymizeId } from '../utils/privacy';
 import { computeRiskForCells, persistRiskResults } from '../engine/riskScorer';
 import { broadcastRiskUpdate } from '../socket/socketManager';
@@ -25,17 +25,15 @@ router.post('/', dangerTapLimiter, async (req: Request, res: Response): Promise<
     const anonId = anonymizeId(sessionId);
     const h3Index = h3.latLngToCell(lat, lng, H3_RESOLUTION);
 
-    const supabase = getSupabase();
+    const pool = getDbPool();
 
-    const { error: insertError } = await supabase.from('danger_taps').insert({
-      anon_id: anonId,
-      lat,
-      lng,
-      h3_index: h3Index,
-      location: `POINT(${lng} ${lat})`,
-    });
-
-    if (insertError) {
+    try {
+      await pool.query(
+        `INSERT INTO danger_taps (anon_id, lat, lng, h3_index, location) 
+         VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($3, $2), 4326))`,
+        [anonId, lat, lng, h3Index]
+      );
+    } catch (insertError) {
       console.error('[DangerTap] Insert failed:', insertError);
     }
 

@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { getSupabase } from '../utils/supabase';
+import { getDbPool } from '../utils/db';
 import { anonymizeId } from '../utils/privacy';
 
 export interface SignalPoint {
@@ -185,20 +185,19 @@ function detectStopClusters(points: SignalPoint[]): DetectedAnomaly[] {
 export async function persistAnomalies(anomalies: DetectedAnomaly[], anonId: string): Promise<void> {
   if (anomalies.length === 0) return;
 
-  const supabase = getSupabase();
+  const pool = getDbPool();
 
-  const rows = anomalies.map(a => ({
-    anon_id: anonId,
-    anomaly_type: a.type,
-    lat: a.lat,
-    lng: a.lng,
-    h3_index: a.h3Index,
-    severity: a.severity,
-    metadata: a.metadata,
-  }));
+  const insertQueries = anomalies.map(async a => {
+    return pool.query(
+      `INSERT INTO anomalies (anon_id, anomaly_type, lat, lng, h3_index, severity, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [anonId, a.type, a.lat, a.lng, a.h3Index, a.severity, a.metadata]
+    );
+  });
 
-  const { error } = await supabase.from('anomalies').insert(rows);
-  if (error) {
+  try {
+    await Promise.all(insertQueries);
+  } catch (error) {
     console.error('[AnomalyDetector] Insight insert failed:', error);
   }
 }

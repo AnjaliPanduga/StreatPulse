@@ -1,26 +1,24 @@
-import { getSupabase } from '../utils/supabase';
+import { getDbPool } from '../utils/db';
 
-// Trust scores range from 0.1 (spammer) to 2.5 (highly verified)
 const MIN_TRUST = 0.1;
 const MAX_TRUST = 2.5;
 
 export async function getTrustScores(anonIds: string[]): Promise<Map<string, number>> {
   if (anonIds.length === 0) return new Map();
 
-  const supabase = getSupabase();
-  const { data } = await supabase
-    .from('user_trust')
-    .select('anon_id, trust_score')
-    .in('anon_id', anonIds);
+  const pool = getDbPool();
+  const { rows } = await pool.query(
+    'SELECT anon_id, trust_score FROM user_trust WHERE anon_id = ANY($1)',
+    [anonIds]
+  );
 
   const scores = new Map<string, number>();
-  // Default everyone to 1.0 if they aren't in the DB yet
   for (const id of anonIds) {
     scores.set(id, 1.0);
   }
 
-  if (data) {
-    for (const row of data) {
+  if (rows) {
+    for (const row of rows) {
       scores.set(row.anon_id, row.trust_score);
     }
   }
@@ -29,17 +27,13 @@ export async function getTrustScores(anonIds: string[]): Promise<Map<string, num
 }
 
 export async function recordCorroborationEvent(anonIds: string[]): Promise<void> {
-  // If multiple users report the same danger at the same time, they all gain trust.
   if (anonIds.length < 2) return;
 
-  const supabase = getSupabase();
-  const { data } = await supabase
-    .from('user_trust')
-    .select('*')
-    .in('anon_id', anonIds);
+  const pool = getDbPool();
+  const { rows } = await pool.query('SELECT * FROM user_trust WHERE anon_id = ANY($1)', [anonIds]);
 
   const updates = anonIds.map(id => {
-    const existing = data?.find(r => r.anon_id === id);
+    const existing = rows?.find((r: any) => r.anon_id === id);
     const prevScore = existing?.trust_score || 1.0;
     const newScore = Math.min(prevScore + 0.1, MAX_TRUST);
     
@@ -52,5 +46,18 @@ export async function recordCorroborationEvent(anonIds: string[]): Promise<void>
     };
   });
 
-  await supabase.from('user_trust').upsert(updates, { onConflict: 'anon_id' });
+  const upsertQueries = updates.map(async u => {
+    return pool.query(
+      `INSERT INTO user_trust (anon_id, trust_score, total_reports, corroborated_reports, last_active_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (anon_id) DO UPDATE SET 
+         trust_score = EXCLUDED.trust_score,
+         total_reports = EXCLUDED.total_reports,
+         corroborated_reports = EXCLUDED.corroborated_reports,
+         last_active_at = EXCLUDED.last_active_at`,
+      [u.anon_id, u.trust_score, u.total_reports, u.corroborated_reports, u.last_active_at]
+    );
+  });
+  
+  await Promise.all(upsertQueries).catch(e => console.error('[TrustEngine] Upsert failed:', e));
 }

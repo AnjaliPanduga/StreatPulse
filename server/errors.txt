@@ -1,0 +1,21 @@
+﻿src/engine/collectiveIntelligence.ts(42,52): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(43,42): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(45,58): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(46,49): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(50,40): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(51,37): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(52,40): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(53,42): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(57,46): error TS2345: Argument of type 'unknown[]' is not assignable to parameter of type 'string[]'.
+  Type 'unknown' is not assignable to type 'string'.
+src/engine/collectiveIntelligence.ts(61,66): error TS18046: 'sum' is of type 'unknown'.
+src/engine/collectiveIntelligence.ts(61,89): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/engine/collectiveIntelligence.ts(62,23): error TS18046: 'totalTrust' is of type 'unknown'.
+src/engine/collectiveIntelligence.ts(68,30): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(69,25): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(81,34): error TS2345: Argument of type 'unknown[]' is not assignable to parameter of type 'string[]'.
+  Type 'unknown' is not assignable to type 'string'.
+src/engine/collectiveIntelligence.ts(113,32): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/engine/collectiveIntelligence.ts(114,28): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/utils/db.ts(1,22): error TS2307: Cannot find module 'pg' or its corresponding type declarations.
+src/utils/db.ts(23,23): error TS7006: Parameter 'err' implicitly has an 'any' type.
