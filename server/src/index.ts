@@ -42,6 +42,16 @@ cron.schedule('*/2 * * * *', async () => {
   }
 });
 
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n  ❌ Port ${PORT} is already in use.`);
+    console.error(`  💡 Kill the existing process first, or use a different port.\n`);
+  } else {
+    console.error('[Server] Error:', err);
+  }
+  process.exit(1);
+});
+
 server.listen(PORT, () => {
   console.log(`\n  ⚡ StreetPulse Engine running on port ${PORT}`);
   console.log(`  📡 WebSocket server ready`);
